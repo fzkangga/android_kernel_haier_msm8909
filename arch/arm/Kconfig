@@ -1928,6 +1928,18 @@ config ARM_FLUSH_CONSOLE_ON_RESTART
 	  released if it failed to be acquired, which will cause all the
 	  pending messages to be flushed.
 
+config ARCH_MSM8909_X37_G101
+	bool "Haier MSM8909 X37"
+	depends on ARCH_MSM8909
+	help
+	  Support for Haier products
+
+config ARCH_MSM8909_X20_G151
+	bool "Haier MSM8909 X20"
+	depends on ARCH_MSM8909
+	help
+	  Support for Haier products
+
 endmenu
 
 menu "Boot options"

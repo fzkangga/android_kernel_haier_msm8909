@@ -77,6 +77,12 @@ config ARCH_APQ8084
 	select PINCTRL
 	select PINCTRL_MSM_TLMM
 
+config HY_PROJECT
+	string "Default project hy string"
+	default "msm8909_x37_g101" if ARCH_MSM8909_X37_G101
+	default "msm8909_x20_g151" if ARCH_MSM8909_X20_G151
+	default ""
+
 config ARCH_MSM8909
 	bool "MSM8909"
 	select ARCH_MSM_CORTEXMP
