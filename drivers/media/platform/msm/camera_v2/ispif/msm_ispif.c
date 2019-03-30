@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2015, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -59,7 +59,7 @@ static void msm_ispif_io_dump_reg(struct ispif_device *ispif)
 
 
 static inline int msm_ispif_is_intf_valid(uint32_t csid_version,
-	enum msm_ispif_vfe_intf intf_type)
+	uint8_t intf_type)
 {
         return ((csid_version <= CSID_VERSION_V22 && intf_type != VFE0) ||
                 (intf_type >= VFE_MAX)) ? false : true;
@@ -78,57 +78,6 @@ static struct msm_cam_clk_info ispif_8626_reset_clk_info[] = {
 	{"camss_vfe_vfe0_clk", NO_SET_RATE},
 	{"camss_csi_vfe0_clk", NO_SET_RATE},
 };
-
-static int msm_ispif_set_regulator(struct ispif_device *ispif_dev,
-	uint8_t enable)
-{
-	int rc = 0;
-
-	if (enable) {
-		if (!ispif_dev->fs_vfe0) {
-			ispif_dev->fs_vfe0 = regulator_get(
-				&ispif_dev->pdev->dev, "vdd");
-			if (IS_ERR_OR_NULL(ispif_dev->fs_vfe0)) {
-				pr_err("%s: Regulator vfe0 get failed %ld\n",
-					__func__,
-					PTR_ERR(ispif_dev->fs_vfe0));
-				rc = -ENODEV;
-				goto vfe0_reg_get_failed;
-			}
-		}
-		if (ispif_dev->fs_vfe0) {
-			rc = regulator_enable(ispif_dev->fs_vfe0);
-			if (rc) {
-				pr_err("%s: Regulator enable for vfe0 failed\n",
-					__func__);
-				goto fs_vfe0_en_failed;
-			}
-		}
-	} else {
-		if (ispif_dev->fs_vfe0) {
-			regulator_disable(ispif_dev->fs_vfe0);
-			regulator_put(ispif_dev->fs_vfe0);
-			ispif_dev->fs_vfe0 = NULL;
-		}
-		if (ispif_dev->fs_camss) {
-			regulator_disable(ispif_dev->fs_camss);
-			regulator_put(ispif_dev->fs_camss);
-			ispif_dev->fs_camss = NULL;
-		}
-		if (ispif_dev->fs_mmagic_camss) {
-			regulator_disable(ispif_dev->fs_mmagic_camss);
-			regulator_put(ispif_dev->fs_mmagic_camss);
-			ispif_dev->fs_mmagic_camss = NULL;
-		}
-	}
-	return rc;
-
-fs_vfe0_en_failed:
-	regulator_put(ispif_dev->fs_vfe0);
-	ispif_dev->fs_vfe0 = NULL;
-vfe0_reg_get_failed:
-	return rc;
-}
 
 static struct msm_cam_clk_info ispif_8974_ahb_clk_info[ISPIF_CLK_INFO_MAX];
 
@@ -164,13 +113,6 @@ static int msm_ispif_reset_hw(struct ispif_device *ispif, int release)
 	struct clk *reset_clk[ARRAY_SIZE(ispif_8974_reset_clk_info)];
 	struct clk *reset_clk1[ARRAY_SIZE(ispif_8626_reset_clk_info)];
 	ispif->clk_idx = 0;
-
-	/* Turn ON regulators before enabling the clocks*/
-	rc = msm_ispif_set_regulator(ispif, 1);
-	if (rc < 0) {
-		pr_err("%s: ispif enable regulator failed", __func__);
-			return -EFAULT;
-	}
 
 	rc = msm_cam_clk_enable(&ispif->pdev->dev,
 		ispif_8974_reset_clk_info, reset_clk,
@@ -230,8 +172,6 @@ static int msm_ispif_reset_hw(struct ispif_device *ispif, int release)
 				pr_err("%s: VFE0 reset wait timeout\n",
 					 __func__);
 		}
-		/* Turn OFF regulators */
-		rc = msm_ispif_set_regulator(ispif, 0);
 		return -ETIMEDOUT;
 	}
 
@@ -245,8 +185,6 @@ static int msm_ispif_reset_hw(struct ispif_device *ispif, int release)
 			msm_cam_clk_enable(&ispif->pdev->dev,
 				ispif_8974_reset_clk_info, reset_clk,
 				ARRAY_SIZE(ispif_8974_reset_clk_info), 0);
-			/* Turn OFF regulators */
-			rc = msm_ispif_set_regulator(ispif, 0);
 			return -ETIMEDOUT;
 		}
 	}
@@ -269,13 +207,6 @@ static int msm_ispif_reset_hw(struct ispif_device *ispif, int release)
 			pr_err("%s: cannot disable clock, error = %d",
 				__func__, rc);
 		}
-	}
-
-	/* Turn OFF regulators after enabling the clocks*/
-	rc = msm_ispif_set_regulator(ispif, 0);
-	if (rc < 0) {
-		pr_err("%s: ispif disable regulator failed", __func__);
-		return -EFAULT;
 	}
 
 	return rc;
@@ -338,6 +269,11 @@ static int msm_ispif_clk_ahb_enable(struct ispif_device *ispif, int enable)
 {
 	int rc = 0;
 
+	if (ispif->csid_version < CSID_VERSION_V30) {
+		/* Older ISPIF versiond don't need ahb clokc */
+		return 0;
+	}
+
 	rc = msm_ispif_get_ahb_clk_info(ispif, ispif->pdev,
 		ispif_8974_ahb_clk_info);
 	if (rc < 0) {
@@ -384,7 +320,7 @@ static int msm_ispif_reset(struct ispif_device *ispif)
 			ispif->base + ISPIF_VFE_m_INTF_CMD_0(i));
 		msm_camera_io_w(ISPIF_STOP_INTF_IMMEDIATELY,
 			ispif->base + ISPIF_VFE_m_INTF_CMD_1(i));
-		pr_debug("%s: base %pK", __func__, ispif->base);
+		pr_debug("%s: base %lx", __func__, (unsigned long)ispif->base);
 		msm_camera_io_w(0, ispif->base +
 			ISPIF_VFE_m_PIX_INTF_n_CID_MASK(i, 0));
 		msm_camera_io_w(0, ispif->base +
@@ -418,7 +354,7 @@ static int msm_ispif_subdev_g_chip_ident(struct v4l2_subdev *sd,
 }
 
 static void msm_ispif_sel_csid_core(struct ispif_device *ispif,
-	uint8_t intftype, uint8_t csid, enum msm_ispif_vfe_intf vfe_intf)
+	uint8_t intftype, uint8_t csid, uint8_t vfe_intf)
 {
 	uint32_t data;
 
@@ -458,7 +394,7 @@ static void msm_ispif_sel_csid_core(struct ispif_device *ispif,
 }
 
 static void msm_ispif_enable_crop(struct ispif_device *ispif,
-	uint8_t intftype, enum msm_ispif_vfe_intf vfe_intf, uint16_t start_pixel,
+	uint8_t intftype, uint8_t vfe_intf, uint16_t start_pixel,
 	uint16_t end_pixel)
 {
 	uint32_t data;
@@ -490,7 +426,7 @@ static void msm_ispif_enable_crop(struct ispif_device *ispif,
 }
 
 static void msm_ispif_enable_intf_cids(struct ispif_device *ispif,
-	uint8_t intftype, uint16_t cid_mask, enum msm_ispif_vfe_intf vfe_intf, uint8_t enable)
+	uint8_t intftype, uint16_t cid_mask, uint8_t vfe_intf, uint8_t enable)
 {
 	uint32_t intf_addr, data;
 
@@ -532,7 +468,7 @@ static void msm_ispif_enable_intf_cids(struct ispif_device *ispif,
 }
 
 static int msm_ispif_validate_intf_status(struct ispif_device *ispif,
-	uint8_t intftype, enum msm_ispif_vfe_intf vfe_intf)
+	uint8_t intftype, uint8_t vfe_intf)
 {
 	int rc = 0;
 	uint32_t data = 0;
@@ -572,7 +508,7 @@ static int msm_ispif_validate_intf_status(struct ispif_device *ispif,
 }
 
 static void msm_ispif_select_clk_mux(struct ispif_device *ispif,
-	uint8_t intftype, uint8_t csid, enum msm_ispif_vfe_intf vfe_intf)
+	uint8_t intftype, uint8_t csid, uint8_t vfe_intf)
 {
 	uint32_t data = 0;
 
@@ -631,7 +567,7 @@ static uint16_t msm_ispif_get_cids_mask_from_cfg(
 
 	BUG_ON(!entry);
 
-	for (i = 0; i < entry->num_cids && i < MAX_CID_CH_V2; i++)
+	for (i = 0; i < entry->num_cids; i++)
 		cids_mask |= (1 << entry->cids[i]);
 
 	return cids_mask;
@@ -771,7 +707,7 @@ static void msm_ispif_intf_cmd(struct ispif_device *ispif, uint32_t cmd_bits,
 			pr_err("%s: invalid interface type\n", __func__);
 			return;
 		}
-		if (params->entries[i].num_cids > MAX_CID_CH_V2) {
+		if (params->entries[i].num_cids > MAX_CID_CH) {
 			pr_err("%s: out of range of cid_num %d\n",
 				__func__, params->entries[i].num_cids);
 			return;
@@ -908,12 +844,6 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 		vfe_mask |= (1 << vfe_intf);
 	}
 
-	/* Turn ON regulators before enabling the clocks*/
-	rc = msm_ispif_set_regulator(ispif, 1);
-	if (rc < 0) {
-		pr_err("%s: ispif enable regulator failed", __func__);
-		return -EFAULT;
-	}
 	rc = msm_cam_clk_enable(&ispif->pdev->dev,
 		ispif_8974_reset_clk_info, reset_clk,
 		ARRAY_SIZE(ispif_8974_reset_clk_info), 1);
@@ -924,7 +854,6 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 		if (rc < 0) {
 			pr_err("%s: cannot enable clock, error = %d",
 				__func__, rc);
-			goto disable_regulator;
 		} else {
 			/* This is set when device is 8x26 */
 			ispif->clk_idx = 2;
@@ -978,7 +907,7 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 		if (rc < 0) {
 			pr_err("%s: cannot disable clock, error = %d",
 				__func__, rc);
-			goto disable_regulator;
+			goto end;
 		}
 	}
 
@@ -989,16 +918,8 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 		if (rc < 0) {
 			pr_err("%s: cannot disable clock, error = %d",
 				__func__, rc);
-			goto disable_regulator;
+			goto end;
 		}
-	}
-
-	/* Turn OFF regulators after disabling the clocks*/
-	rc = msm_ispif_set_regulator(ispif, 0);
-	if (rc < 0) {
-		pr_err("%s: ispif disable regulator failed", __func__);
-		rc = -EFAULT;
-		goto end;
 	}
 
 	for (i = 0; i < params->num; i++) {
@@ -1045,8 +966,8 @@ static int msm_ispif_restart_frame_boundary(struct ispif_device *ispif,
 			cid_mask, vfe_intf, 1);
 	}
 
+end:
 	return rc;
-
 disable_clk:
 	rc = msm_cam_clk_enable(&ispif->pdev->dev,
 		ispif_8974_reset_clk_info, reset_clk,
@@ -1055,12 +976,12 @@ disable_clk:
 		rc = msm_cam_clk_enable(&ispif->pdev->dev,
 			ispif_8626_reset_clk_info, reset_clk1,
 			ARRAY_SIZE(ispif_8626_reset_clk_info), 0);
+		if (rc < 0)
+			pr_err("%s: cannot enable clock, error = %d",
+				__func__, rc);
 	}
-disable_regulator:
-	/* Turn OFF regulators */
-	msm_ispif_set_regulator(ispif, 0);
-end:
-	return rc;
+
+	return -ETIMEDOUT;
 }
 
 static int msm_ispif_stop_frame_boundary(struct ispif_device *ispif,
@@ -1265,15 +1186,9 @@ static irqreturn_t msm_io_ispif_irq(int irq_num, void *data)
 static int msm_ispif_set_vfe_info(struct ispif_device *ispif,
 	struct msm_ispif_vfe_info *vfe_info)
 {
-	if (!vfe_info || (vfe_info->num_vfe <= 0) ||
-		((uint32_t)(vfe_info->num_vfe) > ispif->hw_num_isps)) {
-		pr_err("Invalid VFE info: %p %d\n", vfe_info,
-			   (vfe_info ? vfe_info->num_vfe:0));
-		return -EINVAL;
-	}
-
 	memcpy(&ispif->vfe_info, vfe_info, sizeof(struct msm_ispif_vfe_info));
-
+	if (ispif->vfe_info.num_vfe > ispif->hw_num_isps)
+		return -EINVAL;
 	return 0;
 }
 
