@@ -26,7 +26,7 @@ int msm_isp_axi_create_stream(
 	struct msm_vfe_axi_stream_request_cmd *stream_cfg_cmd)
 {
 	uint32_t i = stream_cfg_cmd->stream_src;
-	if (i >= MAX_NUM_STREAM) {
+	if (i >= VFE_AXI_SRC_MAX) {
 		pr_err("%s:%d invalid stream_src %d\n", __func__, __LINE__,
 			stream_cfg_cmd->stream_src);
 		return -EINVAL;
@@ -581,6 +581,7 @@ void msm_isp_calculate_bandwidth(
 	struct msm_vfe_axi_shared_data *axi_data,
 	struct msm_vfe_axi_stream *stream_info)
 {
+	int bpp = 0;
 	if (stream_info->stream_src < RDI_INTF_0) {
 		stream_info->bandwidth =
 			(axi_data->src_info[VFE_PIX_0].pixel_clock /
@@ -590,9 +591,10 @@ void msm_isp_calculate_bandwidth(
 			stream_info->format_factor / ISP_Q2;
 	} else {
 		int rdi = SRC_TO_INTF(stream_info->stream_src);
+		bpp = msm_isp_get_bit_per_pixel(stream_info->output_format);
 		if (rdi < VFE_SRC_MAX)
 			stream_info->bandwidth =
-				axi_data->src_info[rdi].pixel_clock;
+				(axi_data->src_info[rdi].pixel_clock / 8) * bpp;
 		else
 			pr_err("%s: Invalid rdi interface\n", __func__);
 	}

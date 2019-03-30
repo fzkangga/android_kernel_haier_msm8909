@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -451,8 +451,13 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	}
 
 	drv->mba_size = SZ_1M;
-	md->mba_mem_dev.coherent_dma_mask =
-		DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
+
+	if (md->mba_mem_dev_fixed)
+		md->mba_mem_dev = *md->mba_mem_dev_fixed;
+	else
+		md->mba_mem_dev.coherent_dma_mask =
+			DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
+
 	init_dma_attrs(&md->attrs_dma);
 	dma_set_attr(DMA_ATTR_STRONGLY_ORDERED, &md->attrs_dma);
 	mba_virt = dma_alloc_attrs(&md->mba_mem_dev, drv->mba_size,
@@ -477,7 +482,15 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 		ret = -ENOMEM;
 		goto err_mss_reset;
 	}
-	memcpy(mba_virt, data, count);
+	if (count <= SZ_1M) {
+		/* Ensures memcpy is done for max 1MB fw size */
+		memcpy(mba_virt, data, count);
+	} else {
+		dev_err(pil->dev, "%s fw image loading into memory is failed due to fw size overflow\n",
+			__func__);
+		ret = -EINVAL;
+		goto err_mss_reset;
+	}
 	wmb();
 
 	ret = pil_mss_reset(pil);
@@ -509,8 +522,12 @@ static int pil_msa_auth_modem_mdt(struct pil_desc *pil, const u8 *metadata,
 	int ret;
 	DEFINE_DMA_ATTRS(attrs);
 
-	drv->mba_mem_dev.coherent_dma_mask =
-		DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
+	if (drv->mba_mem_dev_fixed)
+		drv->mba_mem_dev = *drv->mba_mem_dev_fixed;
+	else
+		drv->mba_mem_dev.coherent_dma_mask =
+			DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
+
 	dma_set_attr(DMA_ATTR_STRONGLY_ORDERED, &attrs);
 	/* Make metadata physically contiguous and 4K aligned. */
 	mdata_virt = dma_alloc_attrs(&drv->mba_mem_dev, size, &mdata_phys,

@@ -594,13 +594,6 @@ static void cluster_unprepare(struct lpm_cluster *cluster,
 	level = &cluster->levels[cluster->last_level];
 	if (level->notify_rpm) {
 		msm_rpm_exit_sleep();
-
-		/* If RPM bumps up CX to turbo, unvote CX turbo vote
-		 * during exit of rpm assisted power collapse to
-		 * reduce the power impact
-		 */
-
-		lpm_wa_cx_unvote_send();
 		msm_mpm_exit_sleep(from_idle);
 	}
 
@@ -922,10 +915,12 @@ static int lpm_probe(struct platform_device *pdev)
 	int size;
 	struct kobject *module_kobj = NULL;
 
+	get_online_cpus();
 	lpm_root_node = lpm_of_parse_cluster(pdev);
 
 	if (IS_ERR_OR_NULL(lpm_root_node)) {
 		pr_err("%s(): Failed to probe low power modes\n", __func__);
+		put_online_cpus();
 		return PTR_ERR(lpm_root_node);
 	}
 
@@ -938,7 +933,6 @@ static int lpm_probe(struct platform_device *pdev)
 	 * core.  BUG in existing code but no known issues possibly because of
 	 * how late lpm_levels gets initialized.
 	 */
-	register_hotcpu_notifier(&lpm_cpu_nblk);
 	get_cpu();
 	on_each_cpu(setup_broadcast_timer, (void *)true, 1);
 	put_cpu();
@@ -949,6 +943,7 @@ static int lpm_probe(struct platform_device *pdev)
 	if (ret) {
 		pr_err("%s: Failed initializing scm_handoff_lock (%d)\n",
 			__func__, ret);
+		put_online_cpus();
 		return ret;
 	}
 
@@ -958,12 +953,13 @@ static int lpm_probe(struct platform_device *pdev)
 	register_cluster_lpm_stats(lpm_root_node, NULL);
 
 	ret = cluster_cpuidle_register(lpm_root_node);
+	put_online_cpus();
 	if (ret) {
 		pr_err("%s()Failed to register with cpuidle framework\n",
 				__func__);
 		goto failed;
 	}
-
+	register_hotcpu_notifier(&lpm_cpu_nblk);
 	module_kobj = kset_find_obj(module_kset, KBUILD_MODNAME);
 	if (!module_kobj) {
 		pr_err("%s: cannot find kobject for module %s\n",

@@ -649,7 +649,7 @@ static int mdp3_dmap_update(struct mdp3_dma *dma, void *buf,
 	int cb_type = MDP3_DMA_CALLBACK_TYPE_VSYNC;
 	struct mdss_panel_data *panel;
 	int rc = 0;
-	int rerty_count = 2;
+	int retry_count = 2;
 
 	ATRACE_BEGIN(__func__);
 	pr_debug("mdp3_dmap_update\n");
@@ -661,12 +661,12 @@ static int mdp3_dmap_update(struct mdp3_dma *dma, void *buf,
 retry_dma_done:
 			rc = wait_for_completion_timeout(&dma->dma_comp,
 				KOFF_TIMEOUT);
-			if (rc <= 0 && --rerty_count) {
+			if (rc <= 0 && --retry_count) {
 				int  vsync_status = MDP3_REG_READ(MDP3_REG_INTR_STATUS) &
 							(1 << MDP3_INTR_DMA_P_DONE);
 				if (!vsync_status) {
 					pr_err("%s cmd time out retry count = %d\n",
-						__func__, rerty_count);
+						__func__, retry_count);
 					goto retry_dma_done;
 				}
 				rc = -1;
@@ -721,12 +721,12 @@ retry_dma_done:
 retry_vsync:
 		rc = wait_for_completion_timeout(&dma->vsync_comp,
 			KOFF_TIMEOUT);
-		if (rc <= 0 && --rerty_count) {
+		if (rc <= 0 && --retry_count) {
 		    int  vsync_status = MDP3_REG_READ(MDP3_REG_INTR_STATUS) &
 					(1 << MDP3_INTR_LCDC_START_OF_FRAME);
 		    if (!vsync_status) {
 			pr_err("mdp3_dmap_update trying again count = %d\n",
-			       rerty_count);
+			       retry_count);
 			goto retry_vsync;
 		    }
 		    rc = -1;
@@ -954,6 +954,10 @@ bool mdp3_dmap_busy(void)
 	return val & MDP3_DMA_P_BUSY_BIT;
 }
 
+/*
+ * During underrun DMA_P registers are reset. Reprogramming CSC to prevent
+ * black screen
+ */
 static void mdp3_dmap_underrun_worker(struct work_struct *work)
 {
 	struct mdp3_dma *dma;

@@ -1225,15 +1225,10 @@ static int msm_vfe32_axi_restart(struct vfe_device *vfe_dev,
 
 	/*Clear IRQ Status */
 	msm_camera_io_w(0xFE7FFFFF, vfe_dev->vfe_base + 0x28);
+	msm_camera_io_w_mb(0x1, vfe_dev->vfe_base + 0x1D8);
 	msm_camera_io_w_mb(0xA, vfe_dev->vfe_base + 0x200);
-
-	if (atomic_read(&vfe_dev->error_info.overflow_state) == NO_OVERFLOW) {
-		/* Restart AXI only in NO OVERFLOW case since this is already
-		   done when overflow occurs. Should not issue multiple AXI
-		   halt commands */
-		msm_vfe32_axi_halt(vfe_dev, blocking);
-	}
-
+	/* Start AXI */
+	msm_camera_io_w(0x0, vfe_dev->vfe_base + 0x1D8);
 	vfe_dev->hw_info->vfe_ops.core_ops.reg_update(vfe_dev, 0xF);
 	memset(&vfe_dev->error_info, 0, sizeof(vfe_dev->error_info));
 	atomic_set(&vfe_dev->error_info.overflow_state, NO_OVERFLOW);
