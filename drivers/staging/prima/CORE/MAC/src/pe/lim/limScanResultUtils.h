@@ -44,7 +44,8 @@
 tANI_U8 limScanHashFunction(tSirMacAddr);
 void    limInitHashTable(tpAniSirGlobal);
 eHalStatus    
-   limLookupNaddHashEntry(tpAniSirGlobal, tLimScanResultNode *, tANI_U8, tANI_U8);
+   limLookupNaddHashEntry(tpAniSirGlobal, tLimScanResultNode *,
+   tANI_U8, tANI_U8, tANI_U32);
 void    limDeleteHashEntry(tLimScanResultNode *);
 void    limDeleteCachedScanResults(tpAniSirGlobal);
 void    limRestorePreScanState(tpAniSirGlobal);
@@ -53,7 +54,8 @@ void    limReInitScanResults(tpAniSirGlobal);
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 void    limInitLfrHashTable(tpAniSirGlobal);
 eHalStatus
-   limLookupNaddLfrHashEntry(tpAniSirGlobal, tLimScanResultNode *, tANI_U8, tANI_U8);
+   limLookupNaddLfrHashEntry(tpAniSirGlobal, tLimScanResultNode *,
+   tANI_U8, tANI_U8, tANI_U32);
 void    limDeleteLfrHashEntry(tLimScanResultNode *);
 void    limDeleteCachedLfrScanResults(tpAniSirGlobal);
 void    limReInitLfrScanResults(tpAniSirGlobal);
@@ -61,13 +63,13 @@ void    limReInitLfrScanResults(tpAniSirGlobal);
 tANI_U32 limDeactivateMinChannelTimerDuringScan(tpAniSirGlobal);
 void    limCheckAndAddBssDescription(tpAniSirGlobal, tpSirProbeRespBeacon, tANI_U8 *, tANI_BOOLEAN, tANI_U8);
 #if defined WLAN_FEATURE_VOWIFI
-eHalStatus    limCollectBssDescription(tpAniSirGlobal,
+void    limCollectBssDescription(tpAniSirGlobal,
                                  tSirBssDescription *,
                                  tpSirProbeRespBeacon,
                                  tANI_U8 *,
                                  tANI_U8);
 #else
-eHalStatus    limCollectBssDescription(tpAniSirGlobal,
+void    limCollectBssDescription(tpAniSirGlobal,
                                  tSirBssDescription *,
                                  tpSirProbeRespBeacon,
                                  tANI_U8 *);
