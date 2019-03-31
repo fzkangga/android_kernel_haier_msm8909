@@ -1621,6 +1621,7 @@ static int msm_cpe_lsm_ioctl(struct snd_pcm_substream *substream,
 	switch (cmd) {
 	case SNDRV_LSM_REG_SND_MODEL_V2: {
 		struct snd_lsm_sound_model_v2 snd_model;
+
 		if (copy_from_user(&snd_model, (void *)arg,
 				   sizeof(struct snd_lsm_sound_model_v2))) {
 			dev_err(rtd->dev,
@@ -1838,6 +1839,16 @@ static int msm_cpe_lsm_ioctl_compat(struct snd_pcm_substream *substream,
 				__func__,
 				sizeof(struct snd_lsm_event_status));
 			err = -EFAULT;
+			goto done;
+		}
+
+		if (u_event_status32.payload_size >
+		   LISTEN_MAX_STATUS_PAYLOAD_SIZE) {
+			dev_err(rtd->dev,
+				"%s: payload_size %d is invalid, max allowed = %d\n",
+				__func__, u_event_status32.payload_size,
+				LISTEN_MAX_STATUS_PAYLOAD_SIZE);
+			err = -EINVAL;
 			goto done;
 		}
 
