@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -141,16 +141,7 @@ static int handle_install_filter_rule_req(void *req_h, void *req)
 	resp.resp.result = IPA_QMI_RESULT_SUCCESS_V01;
 	if (rule_req->filter_spec_list_valid == true) {
 		resp.filter_handle_list_valid = true;
-		if (rule_req->filter_spec_list_len > MAX_NUM_Q6_RULE) {
-			resp.filter_handle_list_len = MAX_NUM_Q6_RULE;
-			IPAWANERR("installed (%d) max Q6-UL rules ",
-			MAX_NUM_Q6_RULE);
-			IPAWANERR("but modem gives total (%u)\n",
-			rule_req->filter_spec_list_len);
-		} else {
-			resp.filter_handle_list_len =
-				rule_req->filter_spec_list_len;
-		}
+		resp.filter_handle_list_len = rule_req->filter_spec_list_len;
 	} else {
 		resp.filter_handle_list_valid = false;
 	}

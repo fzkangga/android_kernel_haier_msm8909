@@ -670,8 +670,8 @@ retry_dma_done:
 					goto retry_dma_done;
 				}
 				rc = -1;
-				ATRACE_END("mdp3_wait_for_dma_comp");
 			}
+			ATRACE_END("mdp3_wait_for_dma_comp");
 		}
 	}
 	if (dma->update_src_cfg) {
