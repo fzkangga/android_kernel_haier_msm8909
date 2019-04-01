@@ -19,8 +19,6 @@
 	qcom,board-id= <0x2060b 0xa>;
 };
 
-<<<<<<< HEAD
-=======
 &soc {
 	/*
 	 * DT node to add support for SMB358 charger and integrate
@@ -87,4 +85,3 @@
 	qcom,resume-soc = <99>;
 	qcom,battery-data = <&qrd_batterydata>;
 };
->>>>>>> 40c00093a4cbf504914c59556c5e685fa3622ad7

@@ -11,17 +11,11 @@
  */
 
 #include "msm8909-pm8916-qrd.dtsi"
-<<<<<<< HEAD
-
-=======
 #include "msm8909-camera-sensor-skut.dtsi"
->>>>>>> 40c00093a4cbf504914c59556c5e685fa3622ad7
 / {
 	model = "Qualcomm Technologies, Inc. MSM8909-PM8916 QRD SKUT";
 	compatible = "qcom,msm8909-qrd", "qcom,msm8909", "qcom,qrd";
 };
-<<<<<<< HEAD
-=======
 
 &tlmm_pinmux {
 	akm_reset_pin {
@@ -312,4 +306,3 @@
 
 	qcom,platform-reset-gpio = <&msm_gpio 25 0>;
 };
->>>>>>> 40c00093a4cbf504914c59556c5e685fa3622ad7

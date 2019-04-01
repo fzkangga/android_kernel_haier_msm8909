@@ -18,8 +18,6 @@
 / {
 	qcom,board-id= <0x1000b 0xa>, <0x1040b 0xa>;
 };
-<<<<<<< HEAD
-=======
 
 &soc {
 	/*
@@ -87,4 +85,3 @@
 	qcom,resume-soc = <99>;
 	qcom,battery-data = <&qrd_batterydata>;
 };
->>>>>>> 40c00093a4cbf504914c59556c5e685fa3622ad7
