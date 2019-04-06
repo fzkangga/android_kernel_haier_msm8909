@@ -12,13 +12,15 @@ clear
 
 # Resources
 THREAD="-j$(grep -c ^processor /proc/cpuinfo)"
-DEFCONFIG="msm8909_x20_g151_cm_defconfig"
+DEFCONFIG="msm8909_x20_g151_stock_defconfig"
 KERNEL="zImage"
 
 #Hyper Kernel Details
-BASE_VER="CAF-ARM-G151"
-VER="-$(date +"%Y%m%d"-%H%M)-"
-Devmod_VER="$BASE_VER$VER$TC"
+KER_VER="CAF-ARM-STOCK-L-G151"
+MODUL_VER="$KER_VER-MODULES"
+VER="-$(date +"%Y%m%d"-%H%M)"
+Devmod_VER="$KER_VER$VER-$TC"
+MODULES_VER="$MODUL_VER$VER"
 
 # Vars
 export ARCH=arm
@@ -29,11 +31,13 @@ export KBUILD_BUILD_HOST=fzkdevmod
 # Paths
 KERNEL_DIR=`pwd`
 RESOURCE_DIR="/home/fzkdevmod/Desktop/fzk_team/project_hy"
-ANYKERNEL_DIR="$RESOURCE_DIR/hyper"
+ANYKERNEL_DIR="$RESOURCE_DIR/devmod/kernel"
 TOOLCHAIN_DIR="$RESOURCE_DIR/toolchain"
 REPACK_DIR="$ANYKERNEL_DIR"
 PATCH_DIR="$ANYKERNEL_DIR/patch"
-MODULES_DIR="$ANYKERNEL_DIR/modules"
+MODULES_DIR="$RESOURCE_DIR/devmod/modules"
+LIB_MODULES="$MODULES_DIR/system/lib/modules"
+MOD_PACK_DIR="$MODULES_DIR"
 ZIP_MOVE="$RESOURCE_DIR/kernel_out"
 ZIMAGE_DIR="$KERNEL_DIR/arch/arm/boot"
 
@@ -45,24 +49,32 @@ function make_kernel {
 		cp -vr $ZIMAGE_DIR/$KERNEL $REPACK_DIR/zImage
 }
 
-#function make_modules {
-#		cd $KERNEL_DIR
-#		make modules $THREAD
-#		find $KERNEL_DIR -name '*.ko' -exec cp {} $MODULES_DIR/ \;
-#		cd $MODULES_DIR
-#       $STRIP --strip-unneeded *.ko
-#      cd $KERNEL_DIR
-#}
+function make_modules {
+	cd $KERNEL_DIR
+	make modules $THREAD
+	find $KERNEL_DIR -name '*.ko' -exec cp {} $LIB_MODULES/ \;
+	cd $LIB_MODULES
+	$STRIP --strip-unneeded *.ko
+	cp -vr wlan.ko pronto/pronto_wlan.ko
+	cd $KERNEL_DIR
+}
 
 function make_dtb {
 		$KERNEL_DIR/dtbToolLineage -2 -o $KERNEL_DIR/arch/arm/boot/dt.img -s 2048 -p $KERNEL_DIR/scripts/dtc/ $KERNEL_DIR/arch/arm/boot/dts/
 		cp -vr $KERNEL_DIR/arch/arm/boot/dt.img $REPACK_DIR/dtb
 }
 
-function make_zip {
+function make_zip_kernel {
 		cd $REPACK_DIR
 		zip -r `echo $Devmod_VER$TC`.zip *
 		mv  `echo $Devmod_VER$TC`.zip $ZIP_MOVE
+		cd $KERNEL_DIR
+}
+
+function make_zip_modules {
+		cd $MOD_PACK_DIR
+		zip -r `echo $MODULES_VER`.zip *
+		mv  `echo $MODULES_VER`.zip $ZIP_MOVE
 		cd $KERNEL_DIR
 }
 
@@ -93,7 +105,8 @@ case "$echoice" in
 		export LD_LIBRARY_PATH=$TOOLCHAIN_DIR/ubertc/arm/gcc4/arm-eabi-4.9/lib/
 		STRIP=$TOOLCHAIN_DIR/ubertc/arm/gcc4/arm-eabi-4.9/bin/arm-eabi-strip
 		TC="UB"
-		rm -rf $MODULES_DIR/*
+		rm -rf $LIB_MODULES/*.ko
+		rm -rf $LIB_MODULES/pronto/*.ko
 		rm -rf $ZIP_MOVE/*
 		rm -rf $KERNEL_DIR/arch/arm/boot/dt.img
 		cd $ANYKERNEL_DIR
@@ -160,8 +173,10 @@ do
 case "$dchoice" in
 	y|Y )
 		make_kernel
+		make_modules
 		make_dtb
-		make_zip
+		make_zip_kernel
+		make_zip_modules
 		break
 		;;
 	n|N )
