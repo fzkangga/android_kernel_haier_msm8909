@@ -16,7 +16,7 @@ DEFCONFIG="msm8909_x20_g151_defconfig"
 KERNEL="zImage"
 
 #Hyper Kernel Details
-BASE_VER="CAF-ARM-G151"
+BASE_VER="CAF-ARM-N-G151"
 VER="-$(date +"%Y%m%d"-%H%M)-"
 Devmod_VER="$BASE_VER$VER$TC"
 
