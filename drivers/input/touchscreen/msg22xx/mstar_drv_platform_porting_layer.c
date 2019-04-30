@@ -99,7 +99,7 @@ static int _gInterruptFlag = 0;
 
 #if defined(CONFIG_TOUCH_DRIVER_RUN_ON_SPRD_PLATFORM) || defined(CONFIG_TOUCH_DRIVER_RUN_ON_QCOM_PLATFORM)
 #ifdef CONFIG_ENABLE_NOTIFIER_FB
-static struct notifier_block _gFbNotifier;
+//static struct notifier_block _gFbNotifier;
 #else
 static struct early_suspend _gEarlySuspend;
 #endif //CONFIG_ENABLE_NOTIFIER_FB
@@ -897,6 +897,11 @@ void DrvPlatformLyrTouchDevicePowerOn(void)
 #endif
 }
 
+void FzkDevModPowerOn(void)
+{
+	gpio_direction_output(MS_TS_MSG_IC_GPIO_RST, 1);
+}
+
 void DrvPlatformLyrTouchDevicePowerOff(void)
 {
     DBG("*** %s() ***\n", __func__);
@@ -914,6 +919,11 @@ void DrvPlatformLyrTouchDevicePowerOff(void)
     hwPowerDown(TPD_POWER_SOURCE, "TP");
 #endif //TPD_CLOSE_POWER_IN_SLEEP
 #endif    
+}
+
+void FzkDevModPowerOff(void)
+{
+	gpio_direction_output(MS_TS_MSG_IC_GPIO_RST, 0);
 }
 
 void DrvPlatformLyrTouchDeviceResetHw(void)
@@ -1396,8 +1406,8 @@ void DrvPlatformLyrTouchDeviceRegisterEarlySuspend(void)
 
 #if defined(CONFIG_TOUCH_DRIVER_RUN_ON_SPRD_PLATFORM) || defined(CONFIG_TOUCH_DRIVER_RUN_ON_QCOM_PLATFORM)
 #ifdef CONFIG_ENABLE_NOTIFIER_FB
-    _gFbNotifier.notifier_call = MsDrvInterfaceTouchDeviceFbNotifierCallback;
-    fb_register_client(&_gFbNotifier);
+    //_gFbNotifier.notifier_call = MsDrvInterfaceTouchDeviceFbNotifierCallback;
+    //fb_register_client(&_gFbNotifier);
 #else
     _gEarlySuspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN;
     _gEarlySuspend.suspend = MsDrvInterfaceTouchDeviceSuspend;

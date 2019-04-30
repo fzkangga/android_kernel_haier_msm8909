@@ -202,7 +202,9 @@ extern void DrvPlatformLyrFingerTouchReleased(s32 nX, s32 nY, s32 nId);
 extern s32 DrvPlatformLyrInputDeviceInitialize(struct i2c_client *pClient);
 extern void DrvPlatformLyrSetIicDataRate(struct i2c_client *pClient, u32 nIicDataRate);
 extern void DrvPlatformLyrTouchDevicePowerOff(void);
+extern void FzkDevModPowerOff(void);
 extern void DrvPlatformLyrTouchDevicePowerOn(void);
+extern void FzkDevModPowerOn(void);
 #ifdef CONFIG_ENABLE_REGULATOR_POWER_ON
 extern void DrvPlatformLyrTouchDeviceRegulatorPowerOn(bool nFlag);
 #endif //CONFIG_ENABLE_REGULATOR_POWER_ON
