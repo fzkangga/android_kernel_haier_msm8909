@@ -465,22 +465,6 @@ static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 			ret = scm_call2(smc_id, &desc);
 			break;
 		}
-		case QSEOS_CLIENT_SEND_DATA_COMMAND_WHITELIST: {
-			struct qseecom_client_send_data_ireq *req;
-			req = (struct qseecom_client_send_data_ireq *)req_buf;
-			smc_id = TZ_APP_QSAPP_SEND_DATA_WITH_WHITELIST_ID;
-			desc.arginfo =
-			TZ_APP_QSAPP_SEND_DATA_WITH_WHITELIST_ID_PARAM_ID;
-			desc.args[0] = req->app_id;
-			desc.args[1] = req->req_ptr;
-			desc.args[2] = req->req_len;
-			desc.args[3] = req->rsp_ptr;
-			desc.args[4] = req->rsp_len;
-			desc.args[5] = req->sglistinfo_ptr;
-			desc.args[6] = req->sglistinfo_len;
-			ret = scm_call2(smc_id, &desc);
-			break;
-		}
 		case QSEOS_RPMB_PROVISION_KEY_COMMAND: {
 			struct qseecom_client_send_service_ireq *req;
 			req = (struct qseecom_client_send_service_ireq *)
@@ -2659,6 +2643,7 @@ static int __qseecom_load_fw(struct qseecom_dev_handle *data, char *appname)
 	if (ret)
 		return ret;
 
+
 	ret = __qseecom_get_fw_data(appname, img_data, fw_size, &load_req);
 	if (ret) {
 		ret = -EIO;
@@ -4458,7 +4443,6 @@ static int __qseecom_qteec_issue_cmd(struct qseecom_dev_handle *data,
 	uint32_t reqd_len_sb_in = 0;
 	void *req_ptr = NULL;
 	void *resp_ptr = NULL;
-	struct sglist_info *table = data->sglistinfo_ptr;
 
 	if (!data || !data->client.ihandle) {
 		pr_err("Client or client handle is not initialized\n");
@@ -5480,17 +5464,6 @@ static void __qseecom_deinit_clk(enum qseecom_ce_hw_instance ce)
 		clk_put(qclk->ce_core_src_clk);
 		qclk->ce_core_src_clk = NULL;
 	}
-}
-
-/*
- * Check whitelist feature, and if TZ feature version is < 1.0.0,
- * then whitelist feature is not supported.
- */
-static int qseecom_check_whitelist_feature(void)
-{
-	int version = scm_get_feat_version(FEATURE_ID_WHITELIST);
-
-	return version >= MAKE_WHITELIST_VERSION(1, 0, 0);
 }
 
 static int qseecom_probe(struct platform_device *pdev)
