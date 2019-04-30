@@ -50,6 +50,8 @@
 #include <linux/regulator/consumer.h>
 #endif //CONFIG_ENABLE_REGULATOR_POWER_ON
 
+#include <linux/of_gpio.h>
+
 /*=============================================================*/
 // CONSTANT VALUE DEFINITION
 /*=============================================================*/
