@@ -63,6 +63,10 @@ extern u8 g_IsEnableGloveMode;
 
 extern u8 g_IsUpdateFirmware;
 
+/*=============================================================*/
+// GLOBAL VARIABLE DEFINITION
+/*=============================================================*/
+
 extern struct input_dev *g_InputDevice;
 
 #ifdef CONFIG_ENABLE_HOTKNOT
@@ -76,12 +80,6 @@ extern u8 g_ForceUpdate;
 
 extern u8 IS_FIRMWARE_DATA_LOG_ENABLED;
 
-
-/*=============================================================*/
-// GLOBAL VARIABLE DEFINITION
-/*=============================================================*/
-
-
 /*=============================================================*/
 // LOCAL VARIABLE DEFINITION
 /*=============================================================*/
@@ -89,12 +87,19 @@ extern u8 IS_FIRMWARE_DATA_LOG_ENABLED;
 #ifdef CONFIG_ENABLE_HOTKNOT
 static u8 _gAMStartCmd[4] = {HOTKNOT_SEND, ADAPTIVEMOD_BEGIN, 0, 0};
 #endif //CONFIG_ENABLE_HOTKNOT
+//add by mike.li for suspend & resume.[2015.07.07]
+#if defined(CONFIG_FB)
+#include <linux/notifier.h>
+#include <linux/fb.h>
+struct notifier_block TPfb_notifier;
+#endif
 
 /*=============================================================*/
 // GLOBAL FUNCTION DEFINITION
 /*=============================================================*/
 
-#ifdef CONFIG_ENABLE_NOTIFIER_FB
+//#ifdef CONFIG_ENABLE_NOTIFIER_FB
+#if 0
 int MsDrvInterfaceTouchDeviceFbNotifierCallback(struct notifier_block *pSelf, unsigned long nEvent, void *pData)
 {
     struct fb_event *pEventData = pData;
@@ -261,8 +266,10 @@ int MsDrvInterfaceTouchDeviceFbNotifierCallback(struct notifier_block *pSelf, un
 
 #else
 
-void MsDrvInterfaceTouchDeviceSuspend(struct early_suspend *pSuspend)
+void MsDrvInterfaceTouchDeviceSuspend(void)
 {
+	int i = 0;
+
     DBG("*** %s() ***\n", __func__);
 
     if (g_IsUpdateFirmware != 0) // Check whether update frimware is finished
@@ -271,49 +278,30 @@ void MsDrvInterfaceTouchDeviceSuspend(struct early_suspend *pSuspend)
         return;
     }
 
-#ifdef CONFIG_ENABLE_PROXIMITY_DETECTION
-    if (g_EnableTpProximity == 1)
-    {
-        DBG("g_EnableTpProximity = %d\n", g_EnableTpProximity);
-        return;
-    }
-#endif //CONFIG_ENABLE_PROXIMITY_DETECTION
 
 #ifdef CONFIG_ENABLE_GESTURE_WAKEUP
-#ifdef CONFIG_ENABLE_HOTKNOT
-    if (g_HotKnotState != HOTKNOT_BEFORE_TRANS_STATE && g_HotKnotState != HOTKNOT_TRANS_STATE && g_HotKnotState != HOTKNOT_AFTER_TRANS_STATE)
-#endif //CONFIG_ENABLE_HOTKNOT
-    {
-        if (g_GestureWakeupMode[0] != 0x00000000 || g_GestureWakeupMode[1] != 0x00000000)
-        {
-            DrvIcFwLyrOpenGestureWakeup(&g_GestureWakeupMode[0]);
-            return;
-        }
-    }
+	if (g_GestureWakeupMode[0] != 0x00000000 || g_GestureWakeupMode[1] != 0x00000000)
+	{
+		DrvIcFwLyrOpenGestureWakeup(&g_GestureWakeupMode[0]);
+		return;
+	}
 #endif //CONFIG_ENABLE_GESTURE_WAKEUP
 
-#ifdef CONFIG_ENABLE_HOTKNOT
-    if (g_HotKnotState == HOTKNOT_BEFORE_TRANS_STATE || g_HotKnotState == HOTKNOT_TRANS_STATE || g_HotKnotState == HOTKNOT_AFTER_TRANS_STATE)
-    {
-        IicWriteData(SLAVE_I2C_ID_DWI2C, &_gAMStartCmd[0], 4); 
-    }
-#endif //CONFIG_ENABLE_HOTKNOT  
+    //DrvPlatformLyrDisableFingerTouchReport();
+    //DrvPlatformLyrFingerTouchReleased(0, 0, 0); // Send touch end for clearing point touch
+	for (i = 0; i < MAX_TOUCH_NUM; i++) {
+		input_mt_slot(g_InputDevice, i);
+		input_mt_report_slot_state(g_InputDevice, MT_TOOL_FINGER, 0);
+	}
+	input_mt_report_pointer_emulation(g_InputDevice, false);
+	input_sync(g_InputDevice);
 
-
-    DrvPlatformLyrFingerTouchReleased(0, 0, 0); // Send touch end for clearing point touch
-    input_sync(g_InputDevice);
-
-    DrvPlatformLyrDisableFingerTouchReport();
-
-#ifdef CONFIG_ENABLE_HOTKNOT
-    if (g_HotKnotState != HOTKNOT_BEFORE_TRANS_STATE && g_HotKnotState != HOTKNOT_TRANS_STATE && g_HotKnotState != HOTKNOT_AFTER_TRANS_STATE)
-#endif //CONFIG_ENABLE_HOTKNOT        
-    {
-        DrvPlatformLyrTouchDevicePowerOff(); 
-    }    
+	FzkDevModPowerOff(); 
+	//DrvPlatformLyrTouchDevicePowerOff(); 
+	//gpio_direction_output(_gGpioReset, 0);
 }
 
-void MsDrvInterfaceTouchDeviceResume(struct early_suspend *pSuspend)
+void MsDrvInterfaceTouchDeviceResume(void)
 {
     DBG("*** %s() ***\n", __func__);
 
@@ -323,80 +311,21 @@ void MsDrvInterfaceTouchDeviceResume(struct early_suspend *pSuspend)
         return;
     }
 
-#ifdef CONFIG_ENABLE_PROXIMITY_DETECTION
-    if (g_EnableTpProximity == 1)
-    {
-        DBG("g_EnableTpProximity = %d\n", g_EnableTpProximity);
-        return;
-    }
-#endif //CONFIG_ENABLE_PROXIMITY_DETECTION
-
 #ifdef CONFIG_ENABLE_GESTURE_WAKEUP
-#ifdef CONFIG_ENABLE_HOTKNOT
-    if (g_HotKnotState != HOTKNOT_BEFORE_TRANS_STATE && g_HotKnotState != HOTKNOT_TRANS_STATE && g_HotKnotState != HOTKNOT_AFTER_TRANS_STATE)
-#endif //CONFIG_ENABLE_HOTKNOT
-    {
-#ifdef CONFIG_ENABLE_GESTURE_DEBUG_MODE
-        if (g_GestureDebugMode == 1)
-        {
-            DrvIcFwLyrCloseGestureDebugMode();
-        }
-#endif //CONFIG_ENABLE_GESTURE_DEBUG_MODE
-
-        if (g_GestureWakeupFlag == 1)
-        {
-            DrvIcFwLyrCloseGestureWakeup();
-        }
-        else
-        {
-            DrvPlatformLyrEnableFingerTouchReport(); 
-        }
-    }
-#ifdef CONFIG_ENABLE_HOTKNOT
-    else    // Enable touch in hotknot transfer mode
-    {
-        DrvPlatformLyrEnableFingerTouchReport();     
-    }
-#endif //CONFIG_ENABLE_HOTKNOT
+	if (g_GestureWakeupFlag == 1)
+	{
+		DrvIcFwLyrCloseGestureWakeup();
+	}
+	else
+	{
+		DrvPlatformLyrEnableFingerTouchReport(); 
+	}
 #endif //CONFIG_ENABLE_GESTURE_WAKEUP
     
-#ifdef CONFIG_ENABLE_HOTKNOT
-    if (g_HotKnotState != HOTKNOT_BEFORE_TRANS_STATE && g_HotKnotState != HOTKNOT_TRANS_STATE && g_HotKnotState != HOTKNOT_AFTER_TRANS_STATE)
-#endif //CONFIG_ENABLE_HOTKNOT        
-    {
-        DrvPlatformLyrTouchDevicePowerOn(); 
-    }   
+	FzkDevModPowerOn(); 
+	//gpio_direction_output(_gGpioReset, 1);
+	//DrvPlatformLyrTouchDevicePowerOn(); 
     
-#ifdef CONFIG_ENABLE_CHARGER_DETECTION 
-    {
-        u8 szChargerStatus[20] = {0};
- 
-        DrvCommonReadFile("/sys/class/power_supply/battery/status", szChargerStatus, 20);
-        
-        DBG("*** Battery Status : %s ***\n", szChargerStatus);
-        
-        g_ForceUpdate = 1; // Set flag to force update charger status
-
-        if (strstr(szChargerStatus, "Charging") != NULL || strstr(szChargerStatus, "Full") != NULL || strstr(szChargerStatus, "Fully charged") != NULL) // Charging
-        {
-            DrvFwCtrlChargerDetection(1); // charger plug-in
-        }
-        else // Not charging
-        {
-            DrvFwCtrlChargerDetection(0); // charger plug-out
-        }
-
-        g_ForceUpdate = 0; // Clear flag after force update charger status
-    }           
-#endif //CONFIG_ENABLE_CHARGER_DETECTION
-
-#ifdef CONFIG_ENABLE_GLOVE_MODE
-    if (g_IsEnableGloveMode == 1)
-    {
-        DrvIcFwLyrOpenGloveMode();
-    }
-#endif //CONFIG_ENABLE_GLOVE_MODE
-
     if (IS_FIRMWARE_DATA_LOG_ENABLED)    
     {
         DrvIcFwLyrRestoreFirmwareModeToLogDataMode(); // Mark this function call for avoiding device driver may spend longer time to resume from suspend state.
@@ -409,6 +338,25 @@ void MsDrvInterfaceTouchDeviceResume(struct early_suspend *pSuspend)
 
 #endif //CONFIG_ENABLE_NOTIFIER_FB
 
+//add by mike.li for suspend & resume.[2015.07.07]
+#if defined(CONFIG_FB)
+static int fb_notifier_callback(struct notifier_block *self,
+				 unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+
+	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
+		blank = evdata->data;
+		if (*blank == FB_BLANK_UNBLANK)
+			MsDrvInterfaceTouchDeviceResume();
+		else if (*blank == FB_BLANK_POWERDOWN)
+			MsDrvInterfaceTouchDeviceSuspend();
+	}
+
+	return 0;
+}
+#endif
 /* probe function is used for matching and initializing input device */
 s32 /*__devinit*/ MsDrvInterfaceTouchDeviceProbe(struct i2c_client *pClient, const struct i2c_device_id *pDeviceId)
 {
@@ -424,7 +372,12 @@ s32 /*__devinit*/ MsDrvInterfaceTouchDeviceProbe(struct i2c_client *pClient, con
     DrvPlatformLyrTouchDeviceRegulatorPowerOn(true);
 #endif //CONFIG_ENABLE_REGULATOR_POWER_ON
 
-    DrvPlatformLyrTouchDevicePowerOn();
+	FzkDevModPowerOff();
+    //gpio_direction_output(global_reset_gpio, 0);
+
+	FzkDevModPowerOn();
+    //gpio_direction_output(global_reset_gpio, 1);
+//    DrvPlatformLyrTouchDevicePowerOn();
 
 #ifdef CONFIG_TOUCH_DRIVER_RUN_ON_MTK_PLATFORM
 #ifdef CONFIG_ENABLE_DMA_IIC
@@ -443,6 +396,16 @@ s32 /*__devinit*/ MsDrvInterfaceTouchDeviceProbe(struct i2c_client *pClient, con
 
     DrvPlatformLyrTouchDeviceRegisterEarlySuspend();
 
+//add by mike.li for suspend & resume.[2015.07.07]
+#if defined(CONFIG_FB)
+	TPfb_notifier.notifier_call = fb_notifier_callback;
+
+	nRetVal = fb_register_client(&TPfb_notifier);
+
+	if (nRetVal)
+		dev_err(&pClient->dev, "Unable to register fb_notifier: %d\n",
+			nRetVal);
+#endif
 #ifdef CONFIG_UPDATE_FIRMWARE_BY_SW_ID
     DrvIcFwLyrCheckFirmwareUpdateBySwId();
 #endif //CONFIG_UPDATE_FIRMWARE_BY_SW_ID
